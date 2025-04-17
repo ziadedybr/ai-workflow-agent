@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workflow Agent</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+        }
+        .chat-container {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        .user-message {
+            background-color: #e2e8f0;
+            border-radius: 18px 18px 0 18px;
+        }
+        .agent-message {
+            background-color: #4a89dc;
+            color: white;
+            border-radius: 18px 18px 18px 0;
+        }
+        .suggestion-chip {
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 16px;
+            padding: 6px 12px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+        .suggestion-chip:hover {
+            background-color: #e2e8f0;
+        }
+        .workflow-panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .workflow-step {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+        }
+        .workflow-step:last-child {
+            border-bottom: none;
+        }
+        .step-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background-color: #4a89dc;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        .step-complete .step-number {
+            background-color: #10b981;
+        }
+        .tool-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            background-color: white;
+        }
+        .prompt-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 8px;
+        }
+        .tab-button {
+            padding: 8px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-button.active {
+            border-bottom: 2px solid #4a89dc;
+            color: #4a89dc;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- Left Panel - Chat Interface -->
+            <div class="w-full lg:w-2/3">
+                <div class="bg-white rounded-lg shadow-md p-4 mb-4">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-2">AI Workflow Agent</h1>
+                    <p class="text-gray-600">Tell me what you need to accomplish, and I'll create a workflow with AI-powered tools to help you.</p>
+                </div>
+                
+                <div class="chat-container bg-white rounded-lg shadow-md p-4 mb-4">
+                    <div id="chat-messages" class="space-y-4">
+                        <div class="agent-message p-3 max-w-md">
+                            <p>Hello! I'm your AI Workflow Agent. I can help you create workflows using AI-powered tools for various tasks.</p>
+                            <p class="mt-2">What would you like to accomplish today?</p>
+                        </div>
+                    </div>
+                    
+                    <div id="suggestion-chips" class="mt-4 mb-4">
+                        <div class="suggestion-chip" onclick="selectSuggestion('Lead Generation')">Lead Generation</div>
+                        <div class="suggestion-chip" onclick="selectSuggestion('Customer Service')">Customer Service</div>
+                        <div class="suggestion-chip" onclick="selectSuggestion('Social Media')">Social Media</div>
+                        <div class="suggestion-chip" onclick="selectSuggestion('Website Creation')">Website Creation</div>
+                        <div class="suggestion-chip" onclick="selectSuggestion('Educational Support')">Educational Support</div>
+                        <div class="suggestion-chip" onclick="selectSuggestion('Health Planning')">Health Planning</div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <div class="flex items-center">
+                        <input id="user-input" type="text" placeholder="Type your message here..." class="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <button id="send-button" onclick="sendMessage()" class="ml-2 bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 focus:outline-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Panel - Workflow Visualization -->
+            <div class="w-full lg:w-1/3">
+                <div id="workflow-container" class="bg-white rounded-lg shadow-md p-4" style="display: none;">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4" id="workflow-title">Workflow</h2>
+                    
+                    <div class="workflow-panel" id="workflow-steps">
+                        <!-- Workflow steps will be added here dynamically -->
+                    </div>
+                    
+                    <div class="mt-4">
+                        <div class="flex border-b">
+                            <div id="tools-tab" class="tab-button active" onclick="switchTab('tools')">AI Tools</div>
+                            <div id="prompts-tab" class="tab-button" onclick="switchTab('prompts')">Prompts</div>
+                        </div>
+                        
+                        <div id="tools-content" class="tab-content active mt-4">
+                            <!-- Tool recommendations will be added here dynamically -->
+                        </div>
+                        
+                        <div id="prompts-content" class="tab-content mt-4">
+                            <!-- Prompt templates will be added here dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // AI Tools Database
+        const aiTools = {
+            leadGeneration: [
+                {
+                    name: 'LinkedIn Sales Navigator',
+                    description: 'Advanced lead search and recommendations',
+                    freeOption: 'None, but basic LinkedIn has limited search',
+                    paidOption: 'Core ($79.99/month) - often discounted',
+                    installationGuide: 'https://business.linkedin.com/sales-solutions/sales-navigator'
+                },
+                {
+                    name: 'Hunter.io',
+                    description: 'Email finder and verification',
+                    freeOption: '25 searches/month',
+                    paidOption: 'Starter ($49/month) - 500 searches/month',
+                    installationGuide: 'https://hunter.io'
+                },
+                {
+                    name: 'ChatGPT',
+                    description: 'AI content generation for lead magnets',
+                    freeOption: 'Limited version available',
+                    paidOption: 'ChatGPT Plus ($20/month)',
+                    installationGuide: 'https://chat.openai.com'
+                }
+            ],
+            customerService: [
+                {
+                    name: 'ManyChat',
+                    description: 'Chatbot builder for Facebook Messenger',
+                    freeOption: 'Basic features for up to 1,000 subscribers',
+                    paidOption: 'Pro ($15/month)',
+                    installationGuide: 'https://manychat.com'
+                },
+                {
+                    name: 'Tidio',
+                    description: 'Live chat and chatbots',
+                    freeOption: 'Up to 50 chatbot interactions/month',
+                    paidOption: 'Communicator ($19/month)',
+                    installationGuide: 'https://www.tidio.com'
+                },
+                {
+                    name: 'Tawk.to',
+                    description: 'Free live chat',
+                    freeOption: 'Unlimited agents and chats',
+                    paidOption: 'Free (paid add-ons available)',
+                    installationGuide: 'https://www.tawk.to'
+                }
+            ],
+            socialMedia: [
+                {
+                    name: 'Buffer',
+                    description: 'Social media scheduling',
+                    freeOption: '3 social channels, 10 scheduled posts',
+                    paidOption: 'Essentials ($6/month/channel)',
+                    installationGuide: 'https://buffer.com'
+                },
+                {
+                    name: 'Canva',
+                    description: 'Graphic design platform',
+                    freeOption: 'Basic features with limited templates',
+                    paidOption: 'Pro ($12.99/month)',
+                    installationGuide: 'https://www.canva.com'
+                },
+                {
+                    name: 'ChatGPT',
+                    description: 'Content generation for posts',
+                    freeOption: 'Limited version available',
+                    paidOption: 'ChatGPT Plus ($20/month)',
+                    installationGuide: 'https://chat.openai.com'
+                }
+            ],
+            website: [
+                {
+                    name: 'Wix ADI',
+                    description: 'AI website builder',
+                    freeOption: 'Basic site with Wix branding',
+                    paidOption: 'Unlimited ($18/month)',
+                    installationGuide: 'https://www.wix.com'
+                },
+                {
+                    name: 'Framer',
+                    description: 'Website builder with AI features',
+                    freeOption: 'Limited publishing options',
+                    paidOption: 'Basic ($20/month)',
+                    installationGuide: 'https://www.framer.com'
+                },
+                {
+                    name: 'ChatGPT',
+                    description: 'Content generation for websites',
+                    freeOption: 'Limited version available',
+                    paidOption: 'ChatGPT Plus ($20/month)',
+                    installationGuide: 'https://chat.openai.com'
+                }
+            ],
+            education: [
+                {
+                    name: 'Quizlet',
+                    description: 'Flashcards and study tools',
+                    freeOption: 'Basic features',
+                    paidOption: 'Quizlet Plus ($35.99/year)',
+                    installationGuide: 'https://quizlet.com'
+                },
+                {
+                    name: 'Khan Academy',
+                    description: 'Free educational content',
+                    freeOption: 'All basic content',
+                    paidOption: 'Khanmigo ($9/month for students)',
+                    installationGuide: 'https://www.khanacademy.org'
+                },
+                {
+                    name: 'ChatGPT',
+                    description: 'Study guide and question generation',
+                    freeOption: 'Limited version available',
+                    paidOption: 'ChatGPT Plus ($20/month)',
+                    installationGuide: 'https://chat.openai.com'
+                }
+            ],
+            health: [
+                {
+                    name: 'MyFitnessPal',
+                    description: 'Nutrition and calorie tracking',
+                    freeOption: 'Basic food tracking',
+                    paidOption: 'Premium ($9.99/month)',
+                    installationGuide: 'https://www.myfitnesspal.com'
+                },
+                {
+                    name: 'Fitbod',
+                    description: 'Workout planning',
+                    freeOption: 'Limited workouts',
+                    paidOption: 'Elite ($12.99/month)',
+                    installationGuide: 'https://fitbod.me'
+                },
+                {
+                    name: 'Habitica',
+                    description: 'Habit tracking as a game',
+                    freeOption: 'Full functionality',
+                    paidOption: 'Free (optional subscriptions available)',
+                    installationGuide: 'https://habitica.com'
+                }
+            ]
+        };
+
+        // Prompt Templates Database
+        const promptTemplates = {
+            leadGeneration: [
+                {
+                    tool: 'LinkedIn Sales Navigator',
+                    template: 'When searching for leads on LinkedIn Sales Navigator, use these filters:\n- Industry: [specific industry]\n- Company size: [size range]\n- Job title: [relevant titles separated by OR]\n- Location: [geographic area]\n- Keywords: [relevant terms for your target]'
+                },
+                {
+                    tool: 'Hunter.io',
+                    template: 'Write a personalized cold email to a potential lead with the following characteristics:\n- Industry: [industry]\n- Position: [job title]\n- Pain points: [list 1-2 pain points]\n- My product/service: [brief description]\n- Unique selling proposition: [what makes your offering unique]'
+                },
+                {
+                    tool: 'ChatGPT',
+                    template: 'I need to create a lead magnet for [target audience] who are interested in [topic/industry]. They have the following pain points: [list 2-3 pain points]. Create a compelling [e-book/checklist/guide] outline that addresses these issues and positions [your product/service] as a potential solution.'
+                }
+            ],
+            customerService: [
+                {
+                    tool: 'ManyChat',
+                    template: 'I need to create a customer service chatbot for a [type of business] that handles the following common questions:\n1. [Question 1]\n2. [Question 2]\n3. [Question 3]\n\nFor each question, provide a friendly, concise response that solves the customer\'s problem while maintaining our brand voice.'
+                },
+                {
+                    tool: 'Tidio',
+                    template: 'Create 5 response templates for handling [specific customer situation, e.g., "product returns"] in a [type of business].\n\nEach template should:\n- Express empathy for the customer\'s situation\n- Clearly explain the policy/process\n- Offer a solution or next steps\n- End with a positive note'
+                },
+                {
+                    tool: 'Tawk.to',
+                    template: 'Generate a comprehensive FAQ section for a [type of business] website. Include 10-15 of the most common questions customers might have about:\n- Products/services offered\n- Pricing and payment options\n- Delivery/implementation process\n- Support and troubleshooting\n- Return/refund policies'
+                }
+            ],
+            socialMedia: [
+                {
+                    tool: 'Buffer',
+                    template: 'Write 5 engaging social media captions for [platform] about [topic/product].\n\nEach caption should:\n- Be between 80-150 characters\n- Include a clear call-to-action\n- Be written in a [casual/professional/inspirational] tone\n- Appeal to our target audience of [brief audience description]'
+                },
+                {
+                    tool: 'Canva',
+                    template: 'Create a social media graphic for [platform] with the following specifications:\n- Theme: [brief description]\n- Brand colors: [list colors]\n- Text to include: [headline/caption]\n- Style: [minimalist/bold/elegant/etc.]\n- Mood: [professional/fun/inspirational/etc.]'
+                },
+                {
+                    tool: 'ChatGPT',
+                    template: 'Create a 4-week social media content calendar for a [type of business] focusing on [specific goal, e.g., "increasing engagement" or "promoting new product line"].\n\nFor each week, suggest:\n- 3 educational posts about [topic related to industry]\n- 2 promotional posts about [products/services]\n- 2 engagement posts (questions, polls, etc.)\n- 1 user-generated content or testimonial feature'
+                }
+            ],
+            website: [
+                {
+                    tool: 'Wix ADI',
+                    template: 'I need to create a website for a [type of business] with the following requirements:\n\nBusiness details:\n- Name: [business name]\n- Industry: [industry]\n- Target audience: [brief description]\n- Brand colors: [color scheme]\n- Logo: [description or "will upload"]'
+                },
+                {
+                    tool: 'Framer',
+                    template: 'Design a website structure for a [type of business] that includes the following pages:\n- Home\n- About\n- Services/Products\n- Contact\n\nFor each page, describe the key elements and content that should be included to effectively showcase the business and convert visitors.'
+                },
+                {
+                    tool: 'ChatGPT',
+                    template: 'Write the content for the [specific page] of a website for a [type of business].\n\nThe business details are:\n- Name: [business name]\n- Main services/products: [brief description]\n- Unique selling points: [what makes them different]\n- Target audience: [brief description]\n- Brand voice: [professional/friendly/authoritative/etc.]'
+                }
+            ],
+            education: [
+                {
+                    tool: 'Quizlet',
+                    template: 'Create a 10-question quiz on [specific topic] suitable for [educational level] students.\n\nFor each question:\n- Provide a clear, concise question\n- Include 4 multiple-choice options (A, B, C, D)\n- Mark the correct answer\n- Add a brief explanation of why the answer is correct'
+                },
+                {
+                    tool: 'Khan Academy',
+                    template: 'Explain [complex concept] in simple terms that a [age/grade level] student would understand.\n\nUse everyday analogies, simple language, and avoid jargon. Include 2-3 examples that relate to experiences a young person might be familiar with.'
+                },
+                {
+                    tool: 'ChatGPT',
+                    template: 'Create a comprehensive study guide for [subject/topic] at the [educational level] level.\n\nThe guide should include:\n1. A summary of key concepts (approximately 500 words)\n2. 10 important definitions with simple explanations\n3. 5 example problems with step-by-step solutions\n4. A list of 15 potential test questions with answers\n5. 3 memory aids or mnemonic devices for difficult concepts'
+                }
+            ],
+            health: [
+                {
+                    tool: 'MyFitnessPal',
+                    template: 'Create a 7-day meal plan for someone with the following characteristics:\n- Goal: [weight loss/muscle gain/maintenance/etc.]\n- Dietary restrictions: [any restrictions]\n- Calorie target: approximately [number] calories per day\n- Preferred cuisine styles: [preferences]\n- Available meal prep time: [time constraints]'
+                },
+                {
+                    tool: 'Fitbod',
+                    template: 'Design a [beginner/intermediate/advanced] [goal-specific] workout routine that can be done [at home/at the gym] with [available equipment].\n\nThe routine should be:\n- [frequency] days per week\n- Approximately [duration] minutes per session\n- Focused on [specific goals or body areas]'
+                },
+                {
+                    tool: 'Habitica',
+                    template: 'Create a 30-day plan to build the habit of [specific habit] for someone who [brief description of current situation].\n\nThe plan should include:\n1. A clear daily action that takes less than [time] minutes\n2. A progression that gradually increases difficulty/duration\n3. Daily motivation or reminders\n4. A tracking system to monitor progress'
+                }
+            ]
+        };
+
+        // Workflow Templates
+        const workflowTemplates = {
+            leadGeneration: {
+                title: 'Lead Generation Workflow',
+                steps: [
+                    { 
+                        id: 1, 
+                        text: 'Identify target audience', 
+                        complete: false,
+                        tool: aiTools.leadGeneration[0],
+                        promptTemplate: promptTemplates.leadGeneration[0].template
+                    },
+                    { 
+                        id: 2, 
+                        text: 'Create lead magnet content', 
+                        complete: false,
+                        tool: aiTools.leadGeneration[2],
+                        promptTemplate: promptTemplates.leadGeneration[2].template
+                    },
+                    { 
+                        id: 3, 
+                        text: 'Set up automated outreach', 
+                        complete: false,
+                        tool: aiTools.leadGeneration[1],
+                        promptTemplate: promptTemplates.leadGeneration[1].template
+                    }
+                ]
+            },
+            customerService: {
+                title: 'Customer Service Automation Workflow',
+                steps: [
+                    { 
+                        id: 1, 
+                        text: 'Create chatbot for common questions', 
+                        complete: false,
+                        tool: aiTools.customerService[0],
+                        promptTemplate: promptTemplates.customerService[0].template
+                    },
+                    { 
+                        id: 2, 
+                        text: 'Set up response templates', 
+                        complete: false,
+                        tool: aiTools.customerService[1],
+                        promptTemplate: promptTemplates.customerService[1].template
+                    },
+                    { 
+                        id: 3, 
+                        text: 'Implement FAQ system', 
+                        complete: false,
+                        tool: aiTools.customerService[2],
+                        promptTemplate: promptTemplates.customerService[2].template
+                    }
+                ]
+            },
+            socialMedia: {
+                title: 'Social Media Management Workflow',
+                steps: [
+                    { 
+                        id: 1, 
+                        text: 'Generate content calendar', 
+                        complete: false,
+                        tool: aiTools.socialMedia[2],
+                        promptTemplate: promptTemplates.socialMedia[2].template
+                    },
+                    { 
+                        id: 2, 
+                        text: 'Create visual templates', 
+                        complete: false,
+                        tool: aiTools.socialMedia[1],
+                        promptTemplate: promptTemplates.socialMedia[1].template
+                    },
+                    { 
+                        id: 3, 
+                        text: 'Schedule posts with automation', 
+                        complete: false,
+                        tool: aiTools.socialMedia[0],
+                        promptTemplate: promptTemplates.socialMedia[0].template
+                    }
+                ]
+            },
+            website: {
+                title: 'Website Creation Workflow',
+                steps: [
+                    { 
+                        id: 1, 
+                        text: 'Choose website builder tool', 
+                        complete: false,
+                        tool: aiTools.website[0],
+                        promptTemplate: promptTemplates.website[0].template
+                    },
+                    { 
+                        id: 2, 
+                        text: 'Design website structure', 
+                        complete: false,
+                        tool: aiTools.website[1],
+                        promptTemplate: promptTemplates.website[1].template
+                    },
+                    { 
+                        id: 3, 
+                        text: 'Create and publish content', 
+                        complete: false,
+                        tool: aiTools.website[2],
+                        promptTemplate: promptTemplates.website[2].template
+                    }
+                ]
+            },
+            education: {
+                title: 'Educational Support Workflow',
+                steps: [
+                    { 
+                        id: 1, 
+                        text: 'Create study materials', 
+                        complete: false,
+                        tool: aiTools.education[2],
+                        promptTemplate: promptTemplates.education[2].template
+                    },
+                    { 
+                        id: 2, 
+                        text: 'Generate practice questions', 
+                        complete: false,
+                        tool: aiTools.education[0],
+                        promptTemplate: promptTemplates.education[0].template
+                    },
+                    { 
+                        id: 3, 
+                        text: 'Implement learning aids', 
+                        complete: false,
+                        tool: aiTools.education[1],
+                        promptTemplate: promptTemplates.education[1].template
+                    }
+                ]
+            },
+            health: {
+                title: 'Health Planning Workflow',
+                steps: [
+                    { 
+                        id: 1, 
+                        text: 'Create personalized meal plan', 
+                        complete: false,
+                        tool: aiTools.health[0],
+                        promptTemplate: promptTemplates.health[0].template
+                    },
+                    { 
+                        id: 2, 
+                        text: 'Generate workout routine', 
+                        complete: false,
+                        tool: aiTools.health[1],
+                        promptTemplate: promptTemplates.health[1].template
+                    },
+                    { 
+                        id: 3, 
+                        text: 'Implement habit tracking', 
+                        complete: false,
+                        tool: aiTools.health[2],
+                        promptTemplate: promptTemplates.health[2].template
+                    }
+                ]
+            }
+        };
+
+        // Current workflow
+        let currentWorkflow = null;
+        let currentCategory = null;
+
+        // Function to send a message
+        function sendMessage() {
+            const userInput = document.getElementById('user-input');
+            const message = userInput.value.trim();
+            
+            if (message) {
+                // Add user message to chat
+                addMessage(message, 'user');
+                
+                // Process user message
+                processUserMessage(message);
+                
+                // Clear input
+                userInput.value = '';
+            }
+        }
+
+        // Function to add a message to the chat
+        function addMessage(message, sender) {
+            const chatMessages = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            
+            if (sender === 'user') {
+                messageDiv.className = 'user-message p-3 max-w-md ml-auto';
+            } else {
+                messageDiv.className = 'agent-message p-3 max-w-md';
+            }
+            
+            messageDiv.innerHTML = `<p>${message}</p>`;
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Function to process user message
+        function processUserMessage(message) {
+            // Convert message to lowercase for easier matching
+            const lowerMessage = message.toLowerCase();
+            
+            // Check for category keywords
+            if (lowerMessage.includes('lead') || lowerMessage.includes('generation') || lowerMessage.includes('leads')) {
+                selectSuggestion('Lead Generation');
+            } else if (lowerMessage.includes('customer') || lowerMessage.includes('service') || lowerMessage.includes('support')) {
+                selectSuggestion('Customer Service');
+            } else if (lowerMessage.includes('social') || lowerMessage.includes('media') || lowerMessage.includes('post')) {
+                selectSuggestion('Social Media');
+            } else if (lowerMessage.includes('website') || lowerMessage.includes('web') || lowerMessage.includes('site')) {
+                selectSuggestion('Website Creation');
+            } else if (lowerMessage.includes('education') || lowerMessage.includes('study') || lowerMessage.includes('learn')) {
+                selectSuggestion('Educational Support');
+            } else if (lowerMessage.includes('health') || lowerMessage.includes('fitness') || lowerMessage.includes('diet')) {
+                selectSuggestion('Health Planning');
+            } else {
+                // Generic response
+                setTimeout(() => {
+                    addMessage("I understand you need help with: " + message + ". Could you please specify which area you're interested in? You can choose from Lead Generation, Customer Service, Social Media, Website Creation, Educational Support, or Health Planning.", 'agent');
+                }, 500);
+            }
+        }
+
+        // Function to handle suggestion chip selection
+        function selectSuggestion(category) {
+            let categoryKey;
+            
+            switch(category) {
+                case 'Lead Generation':
+                    categoryKey = 'leadGeneration';
+                    break;
+                case 'Customer Service':
+                    categoryKey = 'customerService';
+                    break;
+                case 'Social Media':
+                    categoryKey = 'socialMedia';
+                    break;
+                case 'Website Creation':
+                    categoryKey = 'website';
+                    break;
+                case 'Educational Support':
+                    categoryKey = 'education';
+                    break;
+                case 'Health Planning':
+                    categoryKey = 'health';
+                    break;
+                default:
+                    categoryKey = null;
+            }
+            
+            if (categoryKey) {
+                currentCategory = categoryKey;
+                
+                // Add agent response
+                setTimeout(() => {
+                    addMessage(`Great! I'll help you create a workflow for ${category}. Let me break down the process into steps and recommend AI-powered tools for each step.`, 'agent');
+                    
+                    // Create workflow
+                    createWorkflow(categoryKey);
+                }, 500);
+            }
+        }
+
+        // Function to create a workflow
+        function createWorkflow(category) {
+            // Get workflow template
+            currentWorkflow = workflowTemplates[category];
+            
+            // Show workflow container
+            document.getElementById('workflow-container').style.display = 'block';
+            
+            // Set workflow title
+            document.getElementById('workflow-title').textContent = currentWorkflow.title;
+            
+            // Clear previous workflow steps
+            document.getElementById('workflow-steps').innerHTML = '';
+            
+            // Add workflow steps
+            currentWorkflow.steps.forEach(step => {
+                addWorkflowStep(step);
+            });
+            
+            // Show tools for the first step
+            showToolsForStep(currentWorkflow.steps[0]);
+            
+            // Show prompts for the first step
+            showPromptsForStep(currentWorkflow.steps[0]);
+            
+            // Add agent message with workflow explanation
+            setTimeout(() => {
+                let message = `I've created a ${currentWorkflow.title} for you with ${currentWorkflow.steps.length} steps:\n\n`;
+                
+                currentWorkflow.steps.forEach(step => {
+                    message += `${step.id}. ${step.text}\n`;
+                });
+                
+                message += `\nFor each step, I've recommended the best AI-powered tools and provided optimized prompts to help you get the best results. You can click on any step to see the recommended tools and prompts.`;
+                
+                addMessage(message, 'agent');
+            }, 1000);
+        }
+
+        // Function to add a workflow step
+        function addWorkflowStep(step) {
+            const workflowSteps = document.getElementById('workflow-steps');
+            const stepDiv = document.createElement('div');
+            
+            stepDiv.className = step.complete ? 'workflow-step step-complete' : 'workflow-step';
+            stepDiv.innerHTML = `
+                <div class="step-number">${step.id}</div>
+                <div class="step-content">
+                    <div class="step-text font-medium">${step.text}</div>
+                </div>
+            `;
+            
+            // Add click event to show tools and prompts for this step
+            stepDiv.addEventListener('click', () => {
+                // Remove active class from all steps
+                document.querySelectorAll('.workflow-step').forEach(el => {
+                    el.classList.remove('bg-blue-50');
+                });
+                
+                // Add active class to this step
+                stepDiv.classList.add('bg-blue-50');
+                
+                // Show tools and prompts for this step
+                showToolsForStep(step);
+                showPromptsForStep(step);
+            });
+            
+            workflowSteps.appendChild(stepDiv);
+        }
+
+        // Function to show tools for a step
+        function showToolsForStep(step) {
+            const toolsContent = document.getElementById('tools-content');
+            toolsContent.innerHTML = '';
+            
+            const toolCard = document.createElement('div');
+            toolCard.className = 'tool-card';
+            
+            toolCard.innerHTML = `
+                <h3 class="text-lg font-bold">${step.tool.name}</h3>
+                <p class="text-gray-600 mt-1">${step.tool.description}</p>
+                <div class="mt-3">
+                    <div class="mb-2">
+                        <span class="font-medium">Free Option:</span> ${step.tool.freeOption}
+                    </div>
+                    <div class="mb-2">
+                        <span class="font-medium">Paid Option:</span> ${step.tool.paidOption}
+                    </div>
+                    <div>
+                        <span class="font-medium">Installation Guide:</span> 
+                        <a href="${step.tool.installationGuide}" target="_blank" class="text-blue-500 hover:underline">${step.tool.installationGuide}</a>
+                    </div>
+                </div>
+            `;
+            
+            toolsContent.appendChild(toolCard);
+        }
+
+        // Function to show prompts for a step
+        function showPromptsForStep(step) {
+            const promptsContent = document.getElementById('prompts-content');
+            promptsContent.innerHTML = '';
+            
+            const promptCard = document.createElement('div');
+            promptCard.className = 'prompt-card';
+            
+            promptCard.innerHTML = `
+                <h3 class="text-lg font-bold">Optimized Prompt for ${step.tool.name}</h3>
+                <pre class="mt-2 whitespace-pre-wrap text-gray-700">${step.promptTemplate}</pre>
+            `;
+            
+            promptsContent.appendChild(promptCard);
+        }
+
+        // Function to switch tabs
+        function switchTab(tab) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Remove active class from all tab buttons
+            document.querySelectorAll('.tab-button').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(`${tab}-content`).classList.add('active');
+            
+            // Add active class to selected tab button
+            document.getElementById(`${tab}-tab`).classList.add('active');
+        }
+
+        // Event listener for Enter key in input field
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
